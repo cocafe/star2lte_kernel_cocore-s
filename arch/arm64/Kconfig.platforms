@@ -296,6 +296,15 @@ config ZONE_MOVABLE_SIZE_MBYTES
 	  Set Movable Zone size based on bits shift value. Movable Zone size
 	  must be less than the highest populated zone.
 
+config DTB_EXYNOS8910_STAR2LTE_KOR
+	bool "Build dtb for Galaxy S9+ Kor (SM-G965N)"
+	select EXYNOS_DTBTOOL
+	default n
+
+config DTB_EXYNOS8910_STAR2LTE_EUR_OPEN
+	bool "Build dtb for Galaxy S9+ Eur/Open (SM-G965F)"
+	select EXYNOS_DTBTOOL
+	default n
 
 menuconfig EXYNOS_DTBTOOL
 	bool "Build dtbtool for Exynos"
