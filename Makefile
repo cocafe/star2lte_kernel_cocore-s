@@ -659,15 +659,32 @@ KBUILD_CFLAGS	+= $(call cc-option,-ffunction-sections,)
 KBUILD_CFLAGS	+= $(call cc-option,-fdata-sections,)
 endif
 
+# default compiler optimize level
+OPTIMIZE_FLAGS  := -O2
+
+ifdef CONFIG_CC_OPTIMIZE_FOR_FASTEST
+OPTIMIZE_FLAGS  := -Ofast
+endif
+
+ifdef CONFIG_CC_OPTIMIZE_FOR_DEBUG
+OPTIMIZE_FLAGS  := -Og
+endif
+
+ifdef CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE
+OPTIMIZE_FLAGS  := -O2
+endif
+
 ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
-KBUILD_CFLAGS	+= -Os $(call cc-disable-warning,maybe-uninitialized,)
+KBUILD_CFLAGS	+= $(call cc-disable-warning,maybe-uninitialized,)
+OPTIMIZE_FLAGS  := -Os
 else
 ifdef CONFIG_PROFILE_ALL_BRANCHES
-KBUILD_CFLAGS	+= -O2 $(call cc-disable-warning,maybe-uninitialized,)
-else
-KBUILD_CFLAGS   += -O2
+KBUILD_CFLAGS	+= $(call cc-disable-warning,maybe-uninitialized,)
 endif
 endif
+
+KBUILD_CFLAGS   += $(OPTIMIZE_FLAGS)
+
 
 KBUILD_CFLAGS += $(call cc-ifversion, -lt, 0409, \
 			$(call cc-disable-warning,maybe-uninitialized,))

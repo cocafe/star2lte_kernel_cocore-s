@@ -1506,6 +1506,12 @@ choice
 	prompt "Compiler optimization level"
 	default CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE
 
+config CC_OPTIMIZE_FOR_FASTEST
+	bool "Optimize for fastest performance"
+	help
+	  This option pass -Ofast to GCC, which enables some likely unsafe
+	  optimizations.
+
 config CC_OPTIMIZE_FOR_PERFORMANCE
 	bool "Optimize for performance"
 	help
@@ -1520,6 +1526,11 @@ config CC_OPTIMIZE_FOR_SIZE
 	  your compiler resulting in a smaller kernel.
 
 	  If unsure, say N.
+
+config CC_OPTIMIZE_FOR_DEBUG
+	bool "Optimize for debug experience"
+	help
+	  This option pass -Og to GCC.
 
 endchoice
 
