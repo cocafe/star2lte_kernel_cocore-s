@@ -495,6 +495,7 @@ static inline unsigned long cpufreq_scale(unsigned long old, u_int div,
 #define MIN_SAMPLING_RATE_RATIO		(2)
 #define UP_LATENCY_MULTIPLIER		(50)
 #define DOWN_LATENCY_MULTIPLIER		(100)
+#define LATENCY_MULTIPLIER		(1000)
 #define MIN_LATENCY_MULTIPLIER		(20)
 #define TRANSITION_LATENCY_LIMIT	(10 * 1000 * 1000)
 
