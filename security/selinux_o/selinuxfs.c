@@ -135,9 +135,7 @@ static ssize_t sel_read_enforce(struct file *filp, char __user *buf,
 	char tmpbuf[TMPBUFLEN];
 	ssize_t length;
 
-	pr_info("%s: real selinux_enforcing: %d\n", __func__, selinux_enforcing);
-
-	length = scnprintf(tmpbuf, TMPBUFLEN, "%d", 1); // to make android happy
+	length = scnprintf(tmpbuf, TMPBUFLEN, "%d", selinux_enforcing);
 	return simple_read_from_buffer(buf, count, ppos, tmpbuf, length);
 }
 
@@ -160,9 +158,6 @@ static ssize_t sel_write_enforce(struct file *file, const char __user *buf,
 	page = memdup_user_nul(buf, count);
 	if (IS_ERR(page))
 		return PTR_ERR(page);
-
-	/* to make me happy */
-	return count;
 
 	length = -EINVAL;
 	if (sscanf(page, "%d", &new_value) != 1)
