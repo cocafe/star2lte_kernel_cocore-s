@@ -27,6 +27,16 @@
 	model_info-hw_rev_end = <17>;
 	compatible = "Samsung, Star2 rev17", "Samsung,EXYNOS9810";
 
+	spi_2: spi@10470000 {
+		cs47l93: cs47l93@0 {
+			cirrus,accdet {
+				acc@1 {
+					cirrus,hpdet-ext-res = <3400>;
+				};
+			};
+		};
+	};
+
 	sound {
 		mixer-paths = "mixer_paths_r02.xml";
 	};

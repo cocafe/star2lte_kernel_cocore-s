@@ -26,6 +26,17 @@
 	model_info-hw_rev_end = <19>;
 	compatible = "Samsung, Star2 rev18", "Samsung,EXYNOS9810";
 
+	spi_2: spi@10470000 {
+		cs47l93: cs47l93@0 {
+			cirrus,accdet {
+				acc@1 {
+					cirrus,hpdet-ext-res = <3400>;
+				};
+			};
+		};
+	};
+
+
 	sound {
 		mixer-paths = "mixer_paths_r02.xml";
 	};
@@ -218,6 +229,31 @@
 		status = "okay";
 	};
 
+	pinctrl@14050000 {
+		fmradio_int: fmradio-int {
+			samsung,pins = "gpa2-1";
+			samsung,pin-function = <0xf>;
+			samsung,pin-pud = <0>;
+			samsung,pin-drv = <3>;
+		};
+	};
+
+	hsi2c_11: hsi2c@104C0000 {
+		status = "okay";
+		rtcfmradio@64 {
+			compatible = "richwave,rtc6213n", "rtc6213n";
+			reg = <0x64>;
+			interrupts = <1 0 0>;
+			interrupt-parent = <&gpa2>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&fmradio_int>;
+			fmint-gpio = <&gpa2 1 0>;
+			fm-lna-gpio = <&expander_gpios 5 0>;
+			volume_db;
+			radio_vol = <44 43 39 36 33 30 27 24 21 18 15 12 10 8 6 4>;
+		};
+	};
+
 	speedy@141C0000 {
 		status = "okay";
 		s2mps18mfd@00 {
@@ -226,6 +262,13 @@
 					regulator-name = "vdd_mcu_1p8";
 					regulator-min-microvolt = <1800000>;
 					regulator-max-microvolt = <1800000>;
+				};
+				ldo45_reg: LDO45 {
+					regulator-name = "VDD_FM_2P8";
+					regulator-min-microvolt = <2800000>;
+					regulator-max-microvolt = <2800000>;
+					regulator-ramp-delay = <12000>;
+					regulator-always-on;
 				};
 			};
 		};
