@@ -255,7 +255,7 @@ rx_submit(struct eth_dev *dev, struct usb_request *req, gfp_t gfp_flags)
 	 * means receivers can't recover lost synch on their own (because
 	 * new packets don't only start after a short RX).
 	 */
-	size += sizeof(struct ethhdr) + dev->net->mtu + RX_EXTRA;
+	size += sizeof(struct ethhdr) + ETH_FRAME_LEN + RX_EXTRA;
 	size += dev->port_usb->header_len;
 	size += out->maxpacket - 1;
 	size -= size % out->maxpacket;
