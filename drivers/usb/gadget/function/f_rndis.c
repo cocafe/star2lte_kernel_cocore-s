@@ -84,6 +84,15 @@ module_param(rndis_ul_max_pkt_per_xfer, uint, S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(rndis_ul_max_pkt_per_xfer,
        "Maximum packets per transfer for UL aggregation");
 
+#ifdef CONFIG_USB_RNDIS_MULTIPACKET
+unsigned int rndis_tx_timer_timeout_ns = 11000000;
+module_param(rndis_tx_timer_timeout_ns, uint, S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(rndis_tx_timer_timeout_ns,
+                 "RNDIS DL aggregation timer timeout value, "
+                 "DO NOT change when RNDIS link is up, "
+                 "may lead to undefined behavior");
+#endif
+
 struct f_rndis {
 	struct gether			port;
 	u8				ctrl_id, data_id;

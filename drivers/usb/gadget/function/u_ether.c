@@ -57,6 +57,10 @@
  * blocks and still have efficient handling. */
 #define GETHER_MAX_ETH_FRAME_LEN 15412
 
+#ifdef CONFIG_USB_RNDIS_MULTIPACKET
+extern unsigned int rndis_tx_timer_timeout_ns;
+#endif
+
 static struct workqueue_struct	*uether_wq;
 
 struct eth_dev {
@@ -83,7 +87,6 @@ struct eth_dev {
 #ifdef CONFIG_USB_RNDIS_MULTIPACKET_WITH_TIMER
 	struct hrtimer	tx_timer;
 	bool en_timer;
-#define TX_TIMEOUT_NSECS	11000000
 #endif
 
 	struct sk_buff_head	rx_frames;
@@ -907,7 +910,7 @@ static netdev_tx_t eth_start_xmit(struct sk_buff *skb,
 #ifdef CONFIG_USB_RNDIS_MULTIPACKET_WITH_TIMER
 			list_add(&req->list, &dev->tx_reqs);
 			spin_unlock_irqrestore(&dev->req_lock, flags);
-			hrtimer_start(&dev->tx_timer, ktime_set(0, TX_TIMEOUT_NSECS),
+			hrtimer_start(&dev->tx_timer, ktime_set(0, rndis_tx_timer_timeout_ns),
 					HRTIMER_MODE_REL);
 			dev->en_timer = 1;
 			goto success;
