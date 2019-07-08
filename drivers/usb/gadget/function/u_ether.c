@@ -176,9 +176,12 @@ static int ueth_change_mtu(struct net_device *net, int new_mtu)
 
 	/* don't change MTU on "live" link (peer won't know) */
 	spin_lock_irqsave(&dev->lock, flags);
+#if 0
 	if (dev->port_usb)
 		status = -EBUSY;
-	else if (new_mtu <= ETH_HLEN || new_mtu > GETHER_MAX_ETH_FRAME_LEN)
+	else
+#endif
+	if (new_mtu <= ETH_HLEN || new_mtu > GETHER_MAX_ETH_FRAME_LEN)
 		status = -ERANGE;
 	else
 		net->mtu = new_mtu;
