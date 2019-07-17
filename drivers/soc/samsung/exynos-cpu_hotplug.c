@@ -689,24 +689,29 @@ static struct notifier_block exynos_cpu_hotplug_nb = {
 	.notifier_call = exynos_cpu_hotplug_pm_notifier,
 };
 
-
+#ifdef CONFIG_EXYNOS_HOTPLUG_GOVERNOR
 static struct pm_qos_request default_min_cpu_hotplug_request;
 void exynos_cpu_hotplug_gov_activated(void)
 {
 	pm_qos_update_request(&default_min_cpu_hotplug_request,
 				PM_QOS_CPU_ONLINE_MIN_DEFAULT_VALUE);
 }
+#endif
 
 static void __init cpu_hotplug_pm_qos_init(void)
 {
+#ifdef CONFIG_EXYNOS_HOTPLUG_GOVERNOR
 	unsigned int default_min = cpumask_weight(&early_cpu_mask);
+#endif
 
 	/* Register PM QoS notifier handler */
 	pm_qos_add_notifier(PM_QOS_CPU_ONLINE_MIN, &cpu_hotplug_qos_notifier);
 	pm_qos_add_notifier(PM_QOS_CPU_ONLINE_MAX, &cpu_hotplug_qos_notifier);
 
+#ifdef CONFIG_EXYNOS_HOTPLUG_GOVERNOR
 	pm_qos_add_request(&default_min_cpu_hotplug_request,
 				PM_QOS_CPU_ONLINE_MIN, default_min);
+#endif
 
 	/* Add PM QoS for sysfs node */
 	pm_qos_add_request(&user_min_cpu_hotplug_request,
