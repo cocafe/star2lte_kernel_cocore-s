@@ -823,6 +823,11 @@ static __init int init_table(struct exynos_cpufreq_domain *domain)
 	cal_dfs_get_rate_table(domain->cal_id, table);
 	cal_dfs_get_asv_table(domain->cal_id, volt_table);
 
+	pr_info("%s: acpm: freq asv table:\n", __func__);
+	for (index = 0; index < domain->table_size; index++) {
+		pr_info("    %lu %d\n", table[index], volt_table[index]);
+	}
+
 	for (index = 0; index < domain->table_size; index++) {
 		domain->freq_table[index].driver_data = index;
 
@@ -1078,6 +1083,9 @@ static __init int init_domain(struct exynos_cpufreq_domain *domain,
 	domain->max_freq = cal_dfs_get_max_freq(domain->cal_id);
 	domain->min_freq = cal_dfs_get_min_freq(domain->cal_id);
 
+	pr_info("%s: acpm: domain: %d max_freq: %u min_freq: %u\n",
+	        __func__, domain->id, domain->max_freq, domain->min_freq);
+
 	/*
 	 * If max-freq property exists in device tree, max frequency is
 	 * selected to smaller one between the value defined in device
@@ -1086,13 +1094,13 @@ static __init int init_domain(struct exynos_cpufreq_domain *domain,
 	 */
 #ifndef CONFIG_EXYNOS_HOTPLUG_GOVERNOR
 	if (!of_property_read_u32(dn, "max-freq", &val))
-		domain->max_freq = min(domain->max_freq, val);
+		domain->max_freq = val;
 #endif
 	if (!of_property_read_u32(dn, "min-freq", &val))
-		domain->min_freq = max(domain->min_freq, val);
+		domain->min_freq = val;
 #ifdef CONFIG_SEC_PM
 	if (!of_property_read_u32(dn, "max-freq", &val))
-		domain->max_usable_freq = min(domain->max_freq, val);
+		domain->max_usable_freq = val;
 #endif
 
 	domain->boot_freq = cal_dfs_get_boot_freq(domain->cal_id);
