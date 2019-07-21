@@ -237,4 +237,7 @@ source "drivers/gator_5.27/Kconfig"
 source "drivers/five/Kconfig"
 
 source "drivers/mpsd/Kconfig"
+
+source "drivers/cpuquiet/Kconfig"
+
 endmenu
