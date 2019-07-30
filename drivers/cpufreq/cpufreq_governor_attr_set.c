@@ -9,6 +9,8 @@
  * published by the Free Software Foundation.
  */
 
+#include <linux/sched.h>
+
 #include "cpufreq_governor.h"
 
 static inline struct gov_attr_set *to_gov_attr_set(struct kobject *kobj)
@@ -26,7 +28,10 @@ static ssize_t governor_show(struct kobject *kobj, struct attribute *attr,
 {
 	struct governor_attr *gattr = to_gov_attr(attr);
 
-	return gattr->show(to_gov_attr_set(kobj), buf);
+	if (gattr->show)
+		return gattr->show(to_gov_attr_set(kobj), buf);
+
+	return 0;
 }
 
 static ssize_t governor_store(struct kobject *kobj, struct attribute *attr,
@@ -34,11 +39,15 @@ static ssize_t governor_store(struct kobject *kobj, struct attribute *attr,
 {
 	struct gov_attr_set *attr_set = to_gov_attr_set(kobj);
 	struct governor_attr *gattr = to_gov_attr(attr);
-	int ret;
+	int ret = -EBUSY;
 
 	mutex_lock(&attr_set->update_lock);
-	ret = attr_set->usage_count ? gattr->store(attr_set, buf, count) : -EBUSY;
+
+	if (attr_set->usage_count && gattr->store)
+		ret = gattr->store(attr_set, buf, count);
+
 	mutex_unlock(&attr_set->update_lock);
+
 	return ret;
 }
 
