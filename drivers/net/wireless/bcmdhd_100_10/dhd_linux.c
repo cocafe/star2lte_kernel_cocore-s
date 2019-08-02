@@ -83,6 +83,7 @@
 #include <dhd_linux_wq.h>
 #include <dhd.h>
 #include <dhd_linux.h>
+#include <dhd_sysfs.h>
 #ifdef DHD_WET
 #include <dhd_wet.h>
 #endif /* DHD_WET */
@@ -1493,8 +1494,10 @@ int dhd_monitor_uninit(void);
 
 #ifdef DHD_PM_CONTROL_FROM_FILE
 bool g_pm_control;
+module_param(g_pm_control, bool, 0644);
 #ifdef DHD_EXPORT_CNTL_FILE
 int pmmode_val;
+module_param(pmmode_val, int, 0644);
 #endif /* DHD_EXPORT_CNTL_FILE */
 void sec_control_pm(dhd_pub_t *dhd, uint *);
 #endif /* DHD_PM_CONTROL_FROM_FILE */
@@ -9836,6 +9839,7 @@ dhd_attach(osl_t *osh, struct dhd_bus *bus, uint bus_hdrlen)
 	DHD_SSSR_MEMPOOL_INIT(&dhd->pub);
 
 	(void)dhd_sysfs_init(dhd);
+	bcmdhd_sysfs_init(dhd);
 
 #ifdef WL_NATOE
 	/* Open Netlink socket for NF_CONNTRACK notifications */
@@ -13365,6 +13369,7 @@ void dhd_detach(dhd_pub_t *dhdp)
 	}
 #endif /* DHD_DUMP_MNGR */
 	dhd_sysfs_exit(dhd);
+	bcmdhd_sysfs_deinit();
 	dhd->pub.fw_download_done = FALSE;
 
 #if defined(BT_OVER_SDIO)
