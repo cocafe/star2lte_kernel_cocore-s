@@ -17,5 +17,11 @@
 
 #include <dhd.h>
 
+#include <linux/types.h>
+#include <linux/atomic.h>
+
+extern atomic_t dhd_pm_resume;
+extern atomic_t dhd_pm_suspend;
+
 int bcmdhd_sysfs_init(dhd_info_t *dhd);
 void bcmdhd_sysfs_deinit(void);

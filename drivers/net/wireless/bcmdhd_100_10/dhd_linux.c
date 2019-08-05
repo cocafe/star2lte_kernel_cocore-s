@@ -2893,7 +2893,7 @@ dhd_packet_filter_add_remove(dhd_pub_t *dhdp, int add_remove, int num)
 static int dhd_set_suspend(int value, dhd_pub_t *dhd)
 {
 #ifndef SUPPORT_PM2_ONLY
-	int power_mode = PM_MAX;
+	int power_mode;
 #endif /* SUPPORT_PM2_ONLY */
 	/* wl_pkt_filter_enable_t	enable_parm; */
 	int bcn_li_dtim = 0; /* Default bcn_li_dtim in resume mode is 0 */
@@ -2969,6 +2969,7 @@ static int dhd_set_suspend(int value, dhd_pub_t *dhd)
 				DHD_ERROR(("%s: force extra Suspend setting \n", __FUNCTION__));
 
 #ifndef SUPPORT_PM2_ONLY
+				power_mode = atomic_read(&dhd_pm_suspend);
 				dhd_wl_ioctl_cmd(dhd, WLC_SET_PM, (char *)&power_mode,
 				                 sizeof(power_mode), TRUE, 0);
 #endif /* SUPPORT_PM2_ONLY */
@@ -3170,7 +3171,7 @@ static int dhd_set_suspend(int value, dhd_pub_t *dhd)
 				}
 #endif /* DYNAMIC_SWOOB_DURATION */
 #ifndef SUPPORT_PM2_ONLY
-				power_mode = PM_FAST;
+				power_mode = atomic_read(&dhd_pm_resume);
 				dhd_wl_ioctl_cmd(dhd, WLC_SET_PM, (char *)&power_mode,
 				                 sizeof(power_mode), TRUE, 0);
 #endif /* SUPPORT_PM2_ONLY */

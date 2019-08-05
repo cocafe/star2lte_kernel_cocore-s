@@ -19,6 +19,8 @@
 
 #include <linux/mm.h>
 #include <linux/slab.h>
+#include <linux/types.h>
+#include <linux/atomic.h>
 #include <linux/kernel.h>
 #include <linux/kobject.h>
 
@@ -50,6 +52,17 @@ static char *ioctl_buf = NULL;
 static size_t ioctl_bufsz = 0;
 
 DEFINE_MUTEX(ioctl_mutex);
+
+static const char *pm_mode_str[] = {
+	"pm_off (ps off)",	// powersave disabled
+	"pm_max (ps on)",	// powersave mode
+	"pm_fast (ps fast)",	// powersave fast?
+	"pm_alloff",
+};
+
+// FIXME: these values can be applied to hw only when earlysuspend triggers
+atomic_t dhd_pm_resume = ATOMIC_INIT(PM_FAST);
+atomic_t dhd_pm_suspend = ATOMIC_INIT(PM_FAST);
 
 int ioctl_cmd_rw(int iocmd, int write)
 {
@@ -331,13 +344,144 @@ static struct attribute_group dhd_sysfs_ioctl_ifgroup = {
 	.attrs = dhd_sysfs_ioctl_attrs,
 };
 
-static struct attribute_group dhd_sysfs_ifgroup = {
-	.attrs = dhd_sysfs_attrs,
+static ssize_t dhd_pm_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
+{
+	int val, err;
+
+	err = dhd_wl_ioctl_cmd(p_dhd, WLC_GET_PM, (char *)&val, sizeof(val), FALSE, 0);
+	if (err)
+		return -EIO;
+
+	if (val <= (ARRAY_SIZE(pm_mode_str) - 1))
+		return scnprintf(buf, PAGE_SIZE - 1, "%d: %s\n", val, pm_mode_str[val]);
+
+	return scnprintf(buf, PAGE_SIZE - 1, "%d\n", val);
+}
+
+static ssize_t dhd_pm_store(struct kobject *kobj, struct kobj_attribute *attr,
+                            const char *buf, size_t count)
+{
+	int val, err;
+
+	if (sscanf(buf, "%d", &val) != 1)
+		return -EINVAL;
+
+	err = dhd_wl_ioctl_cmd(p_dhd, WLC_SET_PM, (char *)&val, sizeof(val), TRUE, 0);
+	if (err)
+		return -EIO;
+
+	return count;
+}
+
+static ssize_t dhd_pm_resume_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
+{
+	int val = atomic_read(&dhd_pm_resume);
+
+	if (val <= (ARRAY_SIZE(pm_mode_str) - 1))
+		return scnprintf(buf, PAGE_SIZE - 1, "%d: %s\n", val, pm_mode_str[val]);
+
+	return -EINVAL;
+}
+
+static ssize_t dhd_pm_resume_store(struct kobject *kobj, struct kobj_attribute *attr,
+                                    const char *buf, size_t count)
+{
+	int val;
+
+	if (sscanf(buf, "%d", &val) != 1)
+		return -EINVAL;
+
+	if (val < 0 || val > (ARRAY_SIZE(pm_mode_str) - 1))
+		return -EINVAL;
+
+	// XXX: this flag should be atomic actually
+	if (p_dhd->in_suspend)
+		return -EBUSY;
+
+	atomic_set(&dhd_pm_resume, val);
+
+	return count;
+}
+
+static ssize_t dhd_pm_suspend_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
+{
+	int val = atomic_read(&dhd_pm_suspend);
+
+	if (val <= (ARRAY_SIZE(pm_mode_str) - 1))
+		return scnprintf(buf, PAGE_SIZE - 1, "%d: %s\n", val, pm_mode_str[val]);
+
+	return -EINVAL;
+}
+
+static ssize_t dhd_pm_suspend_store(struct kobject *kobj, struct kobj_attribute *attr,
+                                    const char *buf, size_t count)
+{
+	int val;
+
+	if (sscanf(buf, "%d", &val) != 1)
+		return -EINVAL;
+
+	if (val < 0 || val > (ARRAY_SIZE(pm_mode_str) - 1))
+		return -EINVAL;
+
+	if (p_dhd->in_suspend)
+		return -EBUSY;
+
+	atomic_set(&dhd_pm_suspend, val);
+
+	return count;
+}
+
+static ssize_t dhd_pm_no_suspend_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE - 1, "%d\n", p_dhd->suspend_disable_flag);
+}
+
+static ssize_t dhd_pm_no_suspend_store(struct kobject *kobj, struct kobj_attribute *attr,
+                                        const char *buf, size_t count)
+{
+	int val;
+
+	if (sscanf(buf, "%d", &val) != 1)
+		return -EINVAL;
+
+	if (p_dhd->in_suspend)
+		return -EBUSY;
+
+	// XXX: this flag needs to synchronize actually
+	p_dhd->suspend_disable_flag = 1;
+
+	return count;
+}
+
+static struct kobj_attribute dhd_pm_mode_interface =
+	__ATTR(pm_mode, 0644, dhd_pm_show, dhd_pm_store);
+
+static struct kobj_attribute dhd_pm_resume_interface =
+	__ATTR(pm_resume, 0644, dhd_pm_resume_show, dhd_pm_resume_store);
+
+static struct kobj_attribute dhd_pm_suspend_interface =
+	__ATTR(pm_suspend, 0644, dhd_pm_suspend_show, dhd_pm_suspend_store);
+
+static struct kobj_attribute dhd_pm_no_suspend_interface =
+	__ATTR(pm_no_suspend, 0644, dhd_pm_no_suspend_show, dhd_pm_no_suspend_store);
+
+static struct attribute *dhd_pm_sysfs_attrs[] = {
+	&dhd_pm_mode_interface.attr,
+	&dhd_pm_resume_interface.attr,
+	&dhd_pm_suspend_interface.attr,
+	&dhd_pm_no_suspend_interface.attr,
+	NULL,
+};
+
+static struct attribute_group dhd_sysfs_pm_ifgroup = {
+	.name  = "pm",
+	.attrs = dhd_pm_sysfs_attrs,
 };
 
 static struct attribute_group *dhd_inteface_groups[] = {
 	&dhd_sysfs_ioctl_ifgroup,
-	&dhd_sysfs_ifgroup,
+	&dhd_sysfs_pm_ifgroup,
 	NULL,
 };
 
