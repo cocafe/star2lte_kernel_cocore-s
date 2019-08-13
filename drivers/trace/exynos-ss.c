@@ -739,7 +739,7 @@ out:
 }
 early_initcall(exynos_ss_init);
 
-#ifdef CONFIG_SEC_PM_DEBUG
+#if 0
 static ssize_t sec_log_read_all(struct file *file, char __user *buf,
 				size_t len, loff_t *offset)
 {
