@@ -16,6 +16,10 @@
  */
 
 #include <dhd.h>
+#include <dhd_linux.h>
+#include <dhd_linux_priv.h>
+#include <wldev_common.h>
+#include <wl_cfg80211.h>
 
 #include <linux/mm.h>
 #include <linux/slab.h>
@@ -63,6 +67,14 @@ static const char *pm_mode_str[] = {
 // FIXME: these values can be applied to hw only when earlysuspend triggers
 atomic_t dhd_pm_resume = ATOMIC_INIT(PM_FAST);
 atomic_t dhd_pm_suspend = ATOMIC_INIT(PM_FAST);
+
+static const char *band_str[] = {
+	"auto",
+	"5G",
+	"2G",
+	"all bands",
+	"6G",
+};
 
 int ioctl_cmd_rw(int iocmd, int write)
 {
@@ -479,9 +491,137 @@ static struct attribute_group dhd_sysfs_pm_ifgroup = {
 	.attrs = dhd_pm_sysfs_attrs,
 };
 
+static ssize_t dhd_band_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
+{
+	dhd_info_t 		*dhd = (dhd_info_t *)p_dhd->info;
+	dhd_if_t 		*ifp;
+	struct net_device 	*net;
+	uint 			band;
+	int			err;
+
+	ifp = dhd->iflist[0];
+	if (!ifp)
+		return -ENODEV;
+
+	net = ifp->net;
+	if (!net)
+		return -ENODEV;
+
+	if ((err = wldev_get_band(net, &band))) {
+		pr_err("%s: wldev_get_band() failed (%d)\n", __func__, err);
+		return err;
+	}
+
+	if ((band < 0) || (band > ARRAY_SIZE(band_str) - 1))
+		return -EINVAL;
+
+	return scnprintf(buf, PAGE_SIZE - 1, "%u: %s\n", band, band_str[band]);
+}
+
+static ssize_t dhd_band_store(struct kobject *kobj, struct kobj_attribute *attr,
+                                        const char *buf, size_t count)
+{
+	dhd_info_t 		*dhd = (dhd_info_t *)p_dhd->info;
+	dhd_if_t 		*ifp;
+	struct net_device 	*net;
+	uint			band;
+	int			err;
+
+	ifp = dhd->iflist[0];
+	if (!ifp)
+		return -ENODEV;
+
+	net = ifp->net;
+	if (!net)
+		return -ENODEV;
+
+	if (sscanf(buf, "%u", &band) != 1)
+		return -EINVAL;
+
+	if ((err = wldev_set_band(net, band))) {
+		pr_err("%s: wldev_set_band() failed (%d)\n", __func__, err);
+		return err;
+	}
+
+	return count;
+}
+
+static ssize_t dhd_band_cfg80211_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
+{
+	dhd_info_t 		*dhd = (dhd_info_t *)p_dhd->info;
+	dhd_if_t 		*ifp;
+	struct net_device 	*net;
+	// char 			ioctl_buf[32];
+	int 			band;
+	int			err;
+
+	ifp = dhd->iflist[0];
+	if (!ifp)
+		return -ENODEV;
+
+	net = ifp->net;
+	if (!net)
+		return -ENODEV;
+
+	if ((err = wldev_iovar_getint(net, "if_band", &band))) {
+		pr_err("%s: wldev_iovar_getint(): %d\n", __func__, err);
+		return err;
+	}
+
+	if (band > ARRAY_SIZE(band_str) - 1)
+		return -EINVAL;
+
+	return scnprintf(buf, PAGE_SIZE - 1, "%u: %s\n", band, band_str[band]);
+}
+
+static ssize_t dhd_band_cfg80211_store(struct kobject *kobj, struct kobj_attribute *attr,
+                                        const char *buf, size_t count)
+{
+	dhd_info_t 		*dhd = (dhd_info_t *)p_dhd->info;
+	dhd_if_t 		*ifp;
+	struct net_device 	*net;
+	uint			band;
+	int			err;
+
+	ifp = dhd->iflist[0];
+	if (!ifp)
+		return -ENODEV;
+
+	net = ifp->net;
+	if (!net)
+		return -ENODEV;
+
+	if (sscanf(buf, "%u", &band) != 1)
+		return -EINVAL;
+
+	if ((err = wl_cfg80211_set_if_band(net, band))) {
+		pr_err("%s: wl_cfg80211_set_if_band() failed (%d)\n", __func__, err);
+		return err;
+	}
+
+	return count;
+}
+
+static struct kobj_attribute dhd_band_interface =
+	__ATTR(band, 0644, dhd_band_show, dhd_band_store);
+
+static struct kobj_attribute dhd_band_cfg80211_interface =
+	__ATTR(band_cfg80211, 0644, dhd_band_cfg80211_show, dhd_band_cfg80211_store);
+
+static struct attribute *dhd_sysfs_attrs[] = {
+	&dhd_band_interface.attr,
+	&dhd_band_cfg80211_interface.attr,
+	NULL,
+};
+
+static struct attribute_group dhd_sysfs_ifgroup = {
+	.attrs = dhd_sysfs_attrs,
+};
+
 static struct attribute_group *dhd_inteface_groups[] = {
 	&dhd_sysfs_ioctl_ifgroup,
 	&dhd_sysfs_pm_ifgroup,
+	&dhd_sysfs_ifgroup,
 	NULL,
 };
 
