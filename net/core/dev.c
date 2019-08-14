@@ -2191,6 +2191,21 @@ error:
 }
 EXPORT_SYMBOL(netif_set_xps_queue);
 
+static int netif_init_tx_queues(struct net_device *dev)
+{
+	int i, err = 0;
+
+	for (i = 0; i < dev->num_tx_queues; i++) {
+		if ((err = netif_set_xps_queue(dev, cpu_online_mask, i))) {
+			pr_err("%s: failed to init tx queue %d for netdev %s, (%d)\n",
+			       __func__, i, dev->name, err);
+			return err;
+		}
+	}
+
+	return err;
+}
+
 #endif
 /*
  * Routine to help set real_num_tx_queues. To avoid skbs mapped to queues
@@ -7104,11 +7119,38 @@ void netif_stacked_transfer_operstate(const struct net_device *rootdev,
 EXPORT_SYMBOL(netif_stacked_transfer_operstate);
 
 #ifdef CONFIG_SYSFS
+static int netif_init_rx_queue(struct netdev_rx_queue *queue)
+{
+	struct rps_map *map;
+	int cpu, i;
+
+	map = kzalloc(max_t(unsigned int,
+	    RPS_MAP_SIZE(cpumask_weight(cpu_online_mask)), L1_CACHE_BYTES),
+	    GFP_KERNEL);
+	if (!map) {
+		return -ENOMEM;
+	}
+
+	i = 0;
+	for_each_online_cpu(cpu)
+		map->cpus[i++] = cpu;
+
+	map->len = i;
+
+	rcu_assign_pointer(queue->rps_map, map);
+
+	if (map)
+		static_key_slow_inc(&rps_needed);
+
+	return 0;
+}
+
 static int netif_alloc_rx_queues(struct net_device *dev)
 {
 	unsigned int i, count = dev->num_rx_queues;
 	struct netdev_rx_queue *rx;
 	size_t sz = count * sizeof(*rx);
+	int err = 0;
 
 	BUG_ON(count < 1);
 
@@ -7120,8 +7162,13 @@ static int netif_alloc_rx_queues(struct net_device *dev)
 	}
 	dev->_rx = rx;
 
-	for (i = 0; i < count; i++)
+	for (i = 0; i < count; i++) {
 		rx[i].dev = dev;
+
+		if ((err = netif_init_rx_queue(&rx[i])))
+			return err;
+	}
+
 	return 0;
 }
 #endif
@@ -7746,6 +7793,11 @@ struct net_device *alloc_netdev_mqs(int sizeof_priv, const char *name,
 	dev->num_rx_queues = rxqs;
 	dev->real_num_rx_queues = rxqs;
 	if (netif_alloc_rx_queues(dev))
+		goto free_all;
+#endif
+
+#ifdef CONFIG_XPS
+	if (netif_init_tx_queues(dev))
 		goto free_all;
 #endif
 
