@@ -9840,7 +9840,7 @@ dhd_attach(osl_t *osh, struct dhd_bus *bus, uint bus_hdrlen)
 	DHD_SSSR_MEMPOOL_INIT(&dhd->pub);
 
 	(void)dhd_sysfs_init(dhd);
-	bcmdhd_sysfs_init(dhd);
+	bcmdhd_sysfs_init(&dhd->pub);
 
 #ifdef WL_NATOE
 	/* Open Netlink socket for NF_CONNTRACK notifications */
