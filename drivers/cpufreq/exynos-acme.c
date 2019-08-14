@@ -784,16 +784,32 @@ static __init void set_policy(struct exynos_cpufreq_domain *domain)
 {
 	struct cpufreq_policy *policy;
 	int max;
+	int min;
 
 	if (of_property_read_u32(domain->dn, "policy-max", &max))
-		return;
+		max = 0;
+
+	if (of_property_read_u32(domain->dn, "policy-min", &min))
+		min = 0;
+
+	if (min > max)
+		min = max;
+
+	if (max < min)
+		max = min;
 
 	policy = cpufreq_cpu_get_raw(cpumask_first(&domain->cpus));
 	if (policy) {
-		policy->max = max;
-		policy->user_policy.max = max;
-	}
+		if (max) {
+			policy->max = max;
+			policy->user_policy.max = max;
+		}
 
+		if (min) {
+			policy->min = min;
+			policy->user_policy.min = min;
+		}
+	}
 }
 
 static __init void init_sysfs(void) { }
