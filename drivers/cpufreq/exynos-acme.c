@@ -789,8 +789,11 @@ static __init void set_policy(struct exynos_cpufreq_domain *domain)
 		return;
 
 	policy = cpufreq_cpu_get_raw(cpumask_first(&domain->cpus));
-	if (policy)
+	if (policy) {
 		policy->max = max;
+		policy->user_policy.max = max;
+	}
+
 }
 
 static __init void init_sysfs(void) { }
