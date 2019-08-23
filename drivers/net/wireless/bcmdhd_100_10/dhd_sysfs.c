@@ -602,15 +602,111 @@ static ssize_t dhd_band_cfg80211_store(struct kobject *kobj, struct kobj_attribu
 	return count;
 }
 
+static ssize_t dhd_txpower_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
+{
+	dhd_info_t 		*dhd = (dhd_info_t *)p_dhd->info;
+	dhd_if_t 		*ifp;
+	struct net_device 	*net;
+	char			ioctl_buf[WLC_IOCTL_SMLEN];
+	int 			qdbm;
+	int			err;
+
+	ifp = dhd->iflist[0];
+	if (!ifp)
+		return -ENODEV;
+
+	net = ifp->net;
+	if (!net)
+		return -ENODEV;
+
+	err = wldev_iovar_getbuf_bsscfg(net, "qtxpower", NULL, 0,
+	                                ioctl_buf, WLC_IOCTL_SMLEN, 0, NULL);
+	if (err)
+		return err;
+
+	memcpy(&qdbm, ioctl_buf, sizeof(qdbm));
+	qdbm = dtoh32(qdbm);
+
+	return scnprintf(buf, PAGE_SIZE - 1, "%s: %d\n",
+	                 qdbm & WL_TXPWR_OVERRIDE ? "fixed" : "auto",
+	                 (qdbm & ~WL_TXPWR_OVERRIDE) / 4);
+}
+
+static ssize_t dhd_txpower_store(struct kobject *kobj, struct kobj_attribute *attr,
+                                        const char *buf, size_t count)
+{
+	dhd_info_t 			*dhd = (dhd_info_t *)p_dhd->info;
+	dhd_if_t 			*ifp;
+	struct net_device 		*net;
+	enum nl80211_tx_power_setting 	type;
+	int				dbm;
+	int				err;
+
+	ifp = dhd->iflist[0];
+	if (!ifp)
+		return -ENODEV;
+
+	net = ifp->net;
+	if (!net)
+		return -ENODEV;
+
+	if (sscanf(buf, "%d", &dbm) != 1)
+		return -EINVAL;
+
+	if (dbm == -1)
+		type = NL80211_TX_POWER_AUTOMATIC;
+	else
+		type = NL80211_TX_POWER_FIXED;
+
+	if ((err = wl_set_tx_power(net, type, dbm))) {
+		pr_err("%s: wl_set_tx_power() failed (%d)\n", __func__, err);
+		return err;
+	}
+
+	return count;
+}
+
+static ssize_t dhd_linkspeed_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
+{
+	dhd_info_t 		*dhd = (dhd_info_t *)p_dhd->info;
+	dhd_if_t 		*ifp;
+	struct net_device 	*net;
+	int 			linkspeed;
+	int			err;
+
+	ifp = dhd->iflist[0];
+	if (!ifp)
+		return -ENODEV;
+
+	net = ifp->net;
+	if (!net)
+		return -ENODEV;
+
+	if ((err = wldev_get_link_speed(net, &linkspeed))) {
+		pr_err("%s: wldev_get_link_speed(): %d\n", __func__, err);
+		return err;
+	}
+
+	return scnprintf(buf, PAGE_SIZE - 1, "%d Mbps\n", linkspeed / 1000);
+}
+
 static struct kobj_attribute dhd_band_interface =
 	__ATTR(band, 0644, dhd_band_show, dhd_band_store);
 
 static struct kobj_attribute dhd_band_cfg80211_interface =
 	__ATTR(band_cfg80211, 0644, dhd_band_cfg80211_show, dhd_band_cfg80211_store);
 
+static struct kobj_attribute dhd_txpower_interface =
+	__ATTR(tx_power, 0644, dhd_txpower_show, dhd_txpower_store);
+
+static struct kobj_attribute dhd_linkspeed_interface =
+	__ATTR(link_speed, 0444, dhd_linkspeed_show, NULL);
+
 static struct attribute *dhd_sysfs_attrs[] = {
 	&dhd_band_interface.attr,
 	&dhd_band_cfg80211_interface.attr,
+	&dhd_txpower_interface.attr,
+	&dhd_linkspeed_interface.attr,
 	NULL,
 };
 
