@@ -691,10 +691,10 @@ static ssize_t dhd_linkspeed_show(struct kobject *kobj, struct kobj_attribute *a
 }
 
 static struct kobj_attribute dhd_band_interface =
-	__ATTR(band, 0644, dhd_band_show, dhd_band_store);
+	__ATTR(band_raw, 0644, dhd_band_show, dhd_band_store);
 
 static struct kobj_attribute dhd_band_cfg80211_interface =
-	__ATTR(band_cfg80211, 0644, dhd_band_cfg80211_show, dhd_band_cfg80211_store);
+	__ATTR(band, 0644, dhd_band_cfg80211_show, dhd_band_cfg80211_store);
 
 static struct kobj_attribute dhd_txpower_interface =
 	__ATTR(tx_power, 0644, dhd_txpower_show, dhd_txpower_store);
