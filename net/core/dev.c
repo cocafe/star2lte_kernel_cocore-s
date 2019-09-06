@@ -1115,7 +1115,7 @@ static int dev_alloc_name_ns(struct net *net,
 	return ret;
 }
 
-static int dev_get_valid_name(struct net *net,
+int dev_get_valid_name(struct net *net,
 			      struct net_device *dev,
 			      const char *name)
 {
