@@ -610,6 +610,50 @@ static const struct file_operations pm_qos_debug_fops = {
 	.release        = single_release,
 };
 
+static int pm_qos_nblist_dbg_show(struct seq_file *s, void *unused)
+{
+	struct pm_qos_object *qos = s->private;
+	struct notifier_block *nb, *nb_next;
+	struct blocking_notifier_head *nh;
+	int depth = 0;
+
+	nh = qos->constraints->notifiers;
+	if (!rcu_access_pointer(nh->head))
+		return 0;
+
+	rcu_read_lock();
+
+	nb = rcu_dereference_raw(nh->head);
+
+	while (nb) {
+		nb_next = rcu_dereference_raw(nb->next);
+
+		seq_printf(s, "%ps\n", nb->notifier_call);
+
+		nb = nb_next;
+
+		if (++depth > 100)
+			break;
+	}
+
+	rcu_read_unlock();
+
+	return 0;
+}
+
+static int pm_qos_nblist_dbg_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, pm_qos_nblist_dbg_show,
+			   inode->i_private);
+}
+
+static const struct file_operations pm_qos_nblist_debug_fops = {
+	.open           = pm_qos_nblist_dbg_open,
+	.read           = seq_read,
+	.llseek         = seq_lseek,
+	.release        = single_release,
+};
+
 /**
  * pm_qos_update_target - manages the constraints list and calls the notifiers
  *  if needed
@@ -1083,6 +1127,16 @@ static int register_pm_qos_misc(struct pm_qos_object *qos, struct dentry *d)
 	return misc_register(&qos->pm_qos_power_miscdev);
 }
 
+static void register_pm_notifier_list(struct pm_qos_object *qos, struct dentry *d)
+{
+	if (!d)
+		return;
+
+	if (NULL == debugfs_create_file(qos->name, S_IRUGO, d, (void *)qos,
+					&pm_qos_nblist_debug_fops))
+		pr_err("%s: failed to create file for %s\n", __func__, qos->name);
+}
+
 static int find_pm_qos_object_by_minor(int minor)
 {
 	int pm_qos_class;
@@ -1172,7 +1226,7 @@ static int __init pm_qos_power_init(void)
 {
 	int ret = 0;
 	int i;
-	struct dentry *d;
+	struct dentry *d, *d_notifier;
 
 	BUILD_BUG_ON(ARRAY_SIZE(pm_qos_array) != PM_QOS_NUM_CLASSES);
 
@@ -1180,13 +1234,21 @@ static int __init pm_qos_power_init(void)
 	if (IS_ERR_OR_NULL(d))
 		d = NULL;
 
+	d_notifier = debugfs_create_dir("notifier_list", d);
+	if (IS_ERR_OR_NULL(d_notifier))
+		d_notifier = NULL;
+
 	for (i = PM_QOS_CPU_DMA_LATENCY; i < PM_QOS_NUM_CLASSES; i++) {
+		pr_info("%s: %s: 0x%p\n", __func__, pm_qos_array[i]->name, pm_qos_array[i]);
+
 		ret = register_pm_qos_misc(pm_qos_array[i], d);
 		if (ret < 0) {
 			printk(KERN_ERR "pm_qos_param: %s setup failed\n",
 			       pm_qos_array[i]->name);
 			return ret;
 		}
+
+		register_pm_notifier_list(pm_qos_array[i], d_notifier);
 	}
 
 	return ret;
