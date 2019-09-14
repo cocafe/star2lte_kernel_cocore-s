@@ -370,7 +370,11 @@ static int cpu_hotplug_qos_handler(struct notifier_block *b,
 	return do_cpu_hotplug(false);
 }
 
-static struct notifier_block cpu_hotplug_qos_notifier = {
+static struct notifier_block cpu_hotplug_min_qos_notifier = {
+	.notifier_call = cpu_hotplug_qos_handler,
+};
+
+static struct notifier_block cpu_hotplug_max_qos_notifier = {
 	.notifier_call = cpu_hotplug_qos_handler,
 };
 
@@ -705,8 +709,8 @@ static void __init cpu_hotplug_pm_qos_init(void)
 #endif
 
 	/* Register PM QoS notifier handler */
-	pm_qos_add_notifier(PM_QOS_CPU_ONLINE_MIN, &cpu_hotplug_qos_notifier);
-	pm_qos_add_notifier(PM_QOS_CPU_ONLINE_MAX, &cpu_hotplug_qos_notifier);
+	pm_qos_add_notifier(PM_QOS_CPU_ONLINE_MIN, &cpu_hotplug_min_qos_notifier);
+	pm_qos_add_notifier(PM_QOS_CPU_ONLINE_MAX, &cpu_hotplug_max_qos_notifier);
 
 #ifdef CONFIG_EXYNOS_HOTPLUG_GOVERNOR
 	pm_qos_add_request(&default_min_cpu_hotplug_request,
