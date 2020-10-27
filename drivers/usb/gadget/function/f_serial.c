@@ -344,7 +344,7 @@ static struct usb_function *gser_alloc(struct usb_function_instance *fi)
 
 	gser->port_num = opts->port_num;
 
-	gser->port.func.name = "gser";
+	gser->port.func.name = "f_serial";
 	gser->port.func.strings = gser_strings;
 	gser->port.func.bind = gser_bind;
 	gser->port.func.unbind = gser_unbind;

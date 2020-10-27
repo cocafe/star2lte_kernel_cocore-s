@@ -750,6 +750,13 @@ ecm_bind(struct usb_configuration *c, struct usb_function *f)
 		goto fail;
 	ecm->port.out_ep = ep;
 
+	// alloc sammy moded gether request queue
+	status = gether_alloc_request(&ecm->port);
+	if (status < 0) {
+		pr_err("%s: failed to alloc gether request queue\n", __func__);
+		goto fail;
+	}
+
 	/* NOTE:  a status/notification endpoint is *OPTIONAL* but we
 	 * don't treat it that way.  It's simpler, and some newer CDC
 	 * profiles (wireless handsets) no longer treat it as optional.
@@ -857,6 +864,8 @@ static void ecm_free_inst(struct usb_function_instance *f)
 {
 	struct f_ecm_opts *opts;
 
+	pr_info("%s: called\n", __func__);
+
 	opts = container_of(f, struct f_ecm_opts, func_inst);
 	if (opts->bound)
 		gether_cleanup(netdev_priv(opts->net));
@@ -909,11 +918,18 @@ static void ecm_free(struct usb_function *f)
 
 static void ecm_unbind(struct usb_configuration *c, struct usb_function *f)
 {
-	struct f_ecm		*ecm = func_to_ecm(f);
+	struct f_ecm *ecm = func_to_ecm(f);
+	struct f_ecm_opts *opts = container_of(f->fi, struct f_ecm_opts, func_inst);
 
-	DBG(c->cdev, "ecm unbind\n");
+	pr_info("%s: called\n", __func__);
+
+	gether_free_request(&ecm->port);
 
 	usb_free_all_descriptors(f);
+
+	// #ifdef CONFIG_USB_ANDROID_SAMSUNG_COMPOSITE
+	// opts->bound = false;
+	// #endif
 
 	kfree(ecm->notify_req->buf);
 	usb_ep_free_request(ecm->notify, ecm->notify_req);

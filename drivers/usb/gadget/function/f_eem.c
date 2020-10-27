@@ -296,6 +296,13 @@ static int eem_bind(struct usb_configuration *c, struct usb_function *f)
 		goto fail;
 	eem->port.out_ep = ep;
 
+	// alloc sammy moded gether request queue
+	status = gether_alloc_request(&eem->port);
+	if (status < 0) {
+		pr_err("%s: failed to alloc gether request queue\n", __func__);
+		goto fail;
+	}
+
 	status = -ENOMEM;
 
 	/* support all relevant hardware speeds... we expect that when
@@ -562,6 +569,8 @@ static struct config_item_type eem_func_type = {
 	.ct_owner	= THIS_MODULE,
 };
 
+extern struct device *create_function_device(char *name);
+
 static void eem_free_inst(struct usb_function_instance *f)
 {
 	struct f_eem_opts *opts;
@@ -577,11 +586,20 @@ static void eem_free_inst(struct usb_function_instance *f)
 static struct usb_function_instance *eem_alloc_inst(void)
 {
 	struct f_eem_opts *opts;
+	struct device *dev;
 
 	opts = kzalloc(sizeof(*opts), GFP_KERNEL);
 	if (!opts)
 		return ERR_PTR(-ENOMEM);
+
 	mutex_init(&opts->lock);
+
+	dev = create_function_device("f_eem");
+	if (IS_ERR(dev)) {
+		pr_err("%s: failed to create android gadget device\n", __func__);
+		return ERR_PTR(-ENODEV);
+	}
+
 	opts->func_inst.free_func_inst = eem_free_inst;
 	opts->net = gether_setup_default();
 	if (IS_ERR(opts->net)) {
@@ -610,8 +628,11 @@ static void eem_free(struct usb_function *f)
 
 static void eem_unbind(struct usb_configuration *c, struct usb_function *f)
 {
+	struct f_eem *eem = func_to_eem(f);
+
 	DBG(c->cdev, "eem unbind\n");
 
+	gether_free_request(&eem->port);
 	usb_free_all_descriptors(f);
 }
 
@@ -633,7 +654,7 @@ static struct usb_function *eem_alloc(struct usb_function_instance *fi)
 	mutex_unlock(&opts->lock);
 	eem->port.cdc_filter = DEFAULT_FILTER;
 
-	eem->port.func.name = "cdc_eem";
+	eem->port.func.name = "eem";
 	/* descriptors are per-instance copies */
 	eem->port.func.bind = eem_bind;
 	eem->port.func.unbind = eem_unbind;
